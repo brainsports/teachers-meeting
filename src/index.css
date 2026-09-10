@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-green: #84A59D;
+  --color-brand-green-dark: #6B8E85;
+  --color-brand-green-light: #A5C1B9;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+}
