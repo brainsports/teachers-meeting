@@ -373,14 +373,17 @@ export default function App() {
         .split('\n')
         .map(line => new Paragraph({ text: line, alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 } }));
 
+    // 표 셀 안쪽 여백: 모든 방향 0.5cm (284 twips) — 셀 높이는 내용에 따라 자동
+    const cellMargins = { top: 284, bottom: 284, left: 284, right: 284 };
+
     const doc = new Document({
       sections: [
         {
           properties: {
-            // A4 with uniform 1.0cm margins on all four sides
+            // A4 (210×297mm), Word 기본 여백 2.54cm = 1440 twips — 네 방향 동일
             page: {
               size: { width: 11906, height: 16838 },
-              margin: { top: 567, bottom: 567, left: 567, right: 567 },
+              margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 },
             },
           },
           children: [
@@ -391,34 +394,37 @@ export default function App() {
             new Paragraph({ text: '' }),
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
+              margins: cellMargins,
               rows: [
                 // 기본정보: 일시 / 장소
                 new TableRow({
                   children: [
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '일 시', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-                    new TableCell({ columnSpan: 3, children: [new Paragraph({ text: formatDateTime(meetingData.date), alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '장 소', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-                    new TableCell({ columnSpan: 3, children: [new Paragraph({ text: meetingData.location, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, children: [new Paragraph({ children: [new TextRun({ text: '일 시', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, columnSpan: 3, children: [new Paragraph({ text: formatDateTime(meetingData.date), alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, children: [new Paragraph({ children: [new TextRun({ text: '장 소', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, columnSpan: 3, children: [new Paragraph({ text: meetingData.location, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
                   ],
                 }),
                 // 기본정보: 참석자
                 new TableRow({
                   children: [
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '참석자', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-                    new TableCell({ columnSpan: 7, children: [new Paragraph({ text: meetingData.attendees, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, children: [new Paragraph({ children: [new TextRun({ text: '참석자', bold: true })], alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+                    new TableCell({ margins: cellMargins, columnSpan: 7, children: [new Paragraph({ text: meetingData.attendees, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
                   ],
                 }),
-                // 본문 5개 항목
+                // 본문 5개 항목 — 본문(toLines)은 양쪽 정렬, 항목명 셀은 중앙 정렬
                 ...SECTION_LABELS.map(
                   ({ key, label }) =>
                     new TableRow({
                       children: [
                         new TableCell({
+                          margins: cellMargins,
                           children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })], alignment: AlignmentType.CENTER })],
                           verticalAlign: VerticalAlign.CENTER,
                           shading: { fill: 'F5F5F5' },
                         }),
                         new TableCell({
+                          margins: cellMargins,
                           columnSpan: 7,
                           children: sections[key] ? toLines(sections[key]) : [new Paragraph({ text: '' })],
                           verticalAlign: VerticalAlign.TOP,

@@ -97,9 +97,11 @@
   min-height: 72px;
   display: flex;
   align-items: flex-start;
-  text-align: left;
+  text-align: justify;
   white-space: pre-wrap;
   line-height: 1.8;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 페이지 번호 — 문서 하단 중앙 */
