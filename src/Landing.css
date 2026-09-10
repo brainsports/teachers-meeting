@@ -1,0 +1,103 @@
+/* ============================================================
+   랜딩페이지 — 레퍼런스 히어로 이미지 + HTML 버튼 오버레이
+   레퍼런스 원본 비주얼을 그대로 사용하고 버튼만 실제 요소.
+   ============================================================ */
+
+.landing-hero {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #fbfaf6;
+}
+
+/* 히어로 이미지: 원본 비율(1672:941 ≈ 16:9) 유지하며 화면 채우기 (잘림 최소화) */
+.landing-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ---------- CTA 버튼 오버레이 ----------
+   레퍼런스 측정: x 657–1008 / 1672 (중앙, 폭 21%),
+   y 708–760 / 941 (top 75.2%), pill, #F0655A, 흰 텍스트 */
+.landing-cta {
+  position: absolute;
+  left: 50%;
+  top: 75.2%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55vw;
+  width: 21vw;
+  max-width: 352px;
+  min-width: 240px;
+  padding: 0;
+  height: 5.5vh;
+  max-height: 56px;
+  min-height: 40px;
+  border-radius: 9999px;
+  background: #f0655a;
+  color: #ffffff;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-weight: 700;
+  font-size: clamp(14px, 1.55vw, 28px);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(240, 101, 90, 0.32);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 10;
+}
+.landing-cta:hover {
+  background: #e5544a;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 18px rgba(240, 101, 90, 0.4);
+}
+.landing-cta:active {
+  transform: translateX(-50%) translateY(0);
+}
+.landing-cta-arrow {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+/* ---------- 반응형: 이미지 비율 유지, 버튼은 비율에 따라 이동 ---------- */
+@media (max-width: 1024px) {
+  .landing-cta {
+    width: 30vw;
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(240, 101, 90, 0.3);
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-cta {
+    width: 62vw;
+    min-width: 200px;
+    height: 6vh;
+    font-size: clamp(14px, 4vw, 20px);
+    gap: 1.2vw;
+  }
+  .landing-hero-img {
+    /* 모바일 세로 화면: 16:9 이미지를 폭 기준으로 맞춰 상단 중앙 정렬(세로 가운데) */
+    object-fit: contain;
+  }
+  .landing-hero {
+    background: #fbfaf6;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-cta {
+    width: 72vw;
+    font-size: 4.5vw;
+  }
+}
