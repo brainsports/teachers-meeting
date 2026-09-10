@@ -13,10 +13,11 @@
    ============================================================ */
 
 /* 오른쪽 70% 작업 공간: 연한 회색, 문서와 구분되는 책상 느낌 */
+/* 오른쪽 70% 작업 공간 — 페이지 전체 배경(연한 회색)과 같은 색으로 이어짐 */
 .a4-workspace {
-  background: #f7f8fa;
+  background: transparent;
   border-radius: 24px;
-  padding: 28px 24px 40px;
+  padding: 0;
   min-height: 100%;
 }
 
@@ -57,15 +58,14 @@
   flex-shrink: 0;
 }
 
-/* A4 내부 표 */
+/* A4 내부 표 — 내용 높이까지만 확장 (시트 남은 공간을 채우지 않아
+   슈퍼비전 마지막 행 아래로 좌측 테두리선이 내려오지 않음) */
 .a4-table {
   width: 100%;
   border-top: 1px solid #94a3b8;
   border-left: 1px solid #94a3b8;
   font-size: 14px;
   line-height: 1.7;
-  flex: 1;
-  min-height: 0;
 }
 
 /* 표 셀 공통 */
@@ -125,8 +125,7 @@
 
 @media (max-width: 768px) {
   .a4-workspace {
-    padding: 16px 12px 24px;
-    border-radius: 16px;
+    padding: 12px 8px 20px;
   }
   .a4-pages {
     gap: 20px;
