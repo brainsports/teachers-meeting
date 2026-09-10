@@ -11,6 +11,7 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI } from "@google/genai";
+import { getUserUsage, incrementUserUsage, resolveUserId } from "./_usage.js";
 
 // Server-side only — never exposed to the client
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -64,6 +65,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { file, meetingData } = req.body || {};
+
+    // 1일 3회 제한 — 서버에서 검증 (KST 기준, IP 기반 사용자 식별)
+    const userId = resolveUserId(req);
+    const usage = getUserUsage(userId);
+    if (usage.remaining <= 0) {
+      return res.status(403).json({
+        error: "USAGE_LIMIT_EXCEEDED",
+        message: "오늘 사용 가능한 AI 회의록 3회를 모두 사용했습니다. 내일 다시 이용할 수 있습니다.",
+        usageInfo: usage,
+      });
+    }
 
     // Validate attached file (PDF / TXT / plain text converted from DOCX)
     if (file) {
@@ -169,7 +181,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       supervision: asText(parsed.supervision),
     };
 
-    return res.json({ sections });
+    // 성공한 생성에만 사용 횟수 차감 (실패·파싱 오류는 제외)
+    const newUsage = incrementUserUsage(userId);
+
+    return res.json({ sections, usageInfo: newUsage });
   } catch (error: any) {
     console.error("[ERROR] Generate Teacher Minutes Server Error:", error?.message || error);
     // Return sanitized error without exposing API key or stack trace
