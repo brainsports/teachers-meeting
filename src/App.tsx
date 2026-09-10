@@ -67,6 +67,13 @@ const SECTION_LABELS: { key: keyof Sections; label: string; hint: string }[] = [
 // 진행 단계 표시
 const STEPS = ['① 회의자료 입력', '② 기본정보 입력', '③ 회의내용 작성', '④ AI 회의록 생성', '⑤ 다운로드'];
 
+// 초기 일시 기본값 (현재 시각) — useState 초기화와 동일한 계산
+const initialDate = (() => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0, 16);
+})();
+
 // Utility to strip markdown characters like **, ###, etc.
 const stripMarkdown = (text: string) => {
   if (!text) return '';
@@ -97,11 +104,7 @@ export default function App() {
 
   const [meetingData, setMeetingData] = useState<MeetingData>({
     title: '교사회의',
-    date: (() => {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      return now.toISOString().slice(0, 16);
-    })(),
+    date: initialDate,
     location: '',
     attendees: '',
     memo: '',
@@ -109,9 +112,6 @@ export default function App() {
 
   // 붙여넣은 회의자료 텍스트 (자동배치 원본)
   const [pastedText, setPastedText] = useState('');
-
-  // AI 분석으로 채워진 항목 추적 (기존값 보호용)
-  const [autoFilled, setAutoFilled] = useState<Set<keyof typeof meetingData>>(new Set());
 
   const [sections, setSections] = useState<Sections>(EMPTY_SECTIONS);
 
@@ -198,30 +198,50 @@ export default function App() {
         return;
       }
 
-      const fields = data.fields || {};
-      const filled: string[] = [];
-      const nextAutoFilled = new Set<keyof typeof meetingData>();
+      const fields = (data.fields || {}) as Record<string, string>;
+      let filledCount = 0;
 
-      // 기존에 사용자가 직접 입력한 값은 덮어쓰지 않는다 (빈 값만 자동배치)
+      // --- meetingData: 회의명/일시/장소/참석자 자동배치 ---
+      // 기본값(초기 자동 설정된 '교사회의', 현재 일시)은 사용자가 직접 쓴 값이
+      // 아니므로 텍스트에 실제 값이 있으면 덮어쓴다. 나머지는 빈 값일 때만 채운다.
+      const TITLE_DEFAULT = '교사회의';
+      const DATE_DEFAULT = initialDate;
       setMeetingData(prev => {
         const next = { ...prev };
-        for (const key of ['title', 'date', 'location', 'attendees', 'memo'] as const) {
-          const v = (fields as Record<string, string>)[key];
+        const assign = (key: 'title' | 'date' | 'location' | 'attendees', v: string | undefined, isDefault: boolean) => {
+          if (!v) return;
+          const cur = prev[key].trim();
+          const empty = cur === '';
+          // 기본값 상태이거나 빈 값일 때만 자동배치 (사용자 수정값 보호)
+          if (empty || (isDefault && cur === (key === 'title' ? TITLE_DEFAULT : DATE_DEFAULT))) {
+            next[key] = v;
+            filledCount += 1;
+          }
+        };
+        assign('title', fields.title, true);
+        assign('date', fields.date, true);
+        assign('location', fields.location, false);
+        assign('attendees', fields.attendees, false);
+        return next;
+      });
+
+      // --- sections: 보고/안건/회의내용/차주계획/슈퍼비전 자동배치 ---
+      // AI 생성 결과가 없는 상태(빈 값)일 때만 채운다 — 이미 생성·수정된 회의록 보호
+      setSections(prev => {
+        const next = { ...prev };
+        for (const key of ['report', 'agenda', 'discussion', 'nextWeek', 'supervision'] as const) {
+          const v = fields[key];
           if (v && !prev[key].trim()) {
             next[key] = v;
-            nextAutoFilled.add(key);
-            filled.push(key);
-          } else if (v && prev[key].trim()) {
-            // 기존값 유지 — 자동배치에서 제외
+            filledCount += 1;
           }
         }
         return next;
       });
 
-      setAutoFilled(nextAutoFilled);
       setNotice(
-        filled.length > 0
-          ? `AI가 ${filled.length}개 항목을 자동으로 채웠습니다. 값을 확인하고 수정할 수 있습니다.`
+        filledCount > 0
+          ? `AI가 ${filledCount}개 항목을 자동으로 채웠습니다. 값을 확인하고 수정할 수 있습니다.`
           : '이미 입력된 값이 있어 자동배치를 건너뛴 항목이 있습니다. 직접 확인해 주세요.'
       );
       setAnalyzing(false);
