@@ -1,18 +1,41 @@
 /* ============================================================
    랜딩페이지 — 레퍼런스 히어로 이미지 + HTML 버튼 오버레이
    레퍼런스 원본 비주얼을 그대로 사용하고 버튼만 실제 요소.
+
+   바깥 여백 구조 (레퍼런스처럼 숨쉴 수 있는 공간):
+   - 바깥 영역: 아주 연한 회색
+   - 좌우 여백 70~80px / 상하 여백 24~30px (PC)
+   - 콘텐츠 max-width 1320px, 가운데 정렬
+   - 랜딩 영역은 흰색
    ============================================================ */
 
 .landing-hero {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  height: 100svh;
-  overflow: hidden;
-  background: #fbfaf6;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 28px 76px; /* 상하 24~30 / 좌우 70~80 */
+  background: #f1f0ec; /* 바깥: 아주 연한 회색 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* 히어로 이미지: 원본 비율(1672:941 ≈ 16:9) 유지하며 화면 채우기 (잘림 최소화) */
+/* 흰색 랜딩 카드 — 콘텐츠 영역 */
+.landing-frame {
+  position: relative;
+  width: 100%;
+  max-width: 1320px;
+  aspect-ratio: 1672 / 941; /* 레퍼런스 원본 비율 */
+  max-height: calc(100vh - 56px);
+  max-height: calc(100svh - 56px);
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* 히어로 이미지: 프레임을 꽉 채움 (원본 비율 유지) */
 .landing-hero-img {
   position: absolute;
   inset: 0;
@@ -24,8 +47,8 @@
 }
 
 /* ---------- CTA 버튼 오버레이 ----------
-   레퍼런스 측정: x 657–1008 / 1672 (중앙, 폭 21%),
-   y 708–760 / 941 (top 75.2%), pill, #F0655A, 흰 텍스트 */
+   레퍼런스 측정 (1672×941): x 657–1008 중앙, y 708–760 (top 75.2%),
+   pill, #F0655A, 흰 텍스트. 프레임 크기에 %로 함께 이동 */
 .landing-cta {
   position: absolute;
   left: 50%;
@@ -34,12 +57,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55vw;
-  width: 21vw;
+  gap: 0.55%;
+  width: 21%;
   max-width: 352px;
-  min-width: 240px;
-  padding: 0;
-  height: 5.5vh;
+  min-width: 230px;
+  height: 5.5%;
   max-height: 56px;
   min-height: 40px;
   border-radius: 9999px;
@@ -47,7 +69,7 @@
   color: #ffffff;
   font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-weight: 700;
-  font-size: clamp(14px, 1.55vw, 28px);
+  font-size: clamp(14px, 1.65vw, 28px);
   letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
@@ -69,35 +91,34 @@
   flex-shrink: 0;
 }
 
-/* ---------- 반응형: 이미지 비율 유지, 버튼은 비율에 따라 이동 ---------- */
+/* ---------- 반응형: 화면에 맞춰 여백 축소 ---------- */
+@media (max-width: 1200px) {
+  .landing-hero { padding: 26px 60px; }
+}
+
 @media (max-width: 1024px) {
-  .landing-cta {
-    width: 30vw;
-    min-width: 220px;
-    box-shadow: 0 4px 12px rgba(240, 101, 90, 0.3);
-  }
+  .landing-hero { padding: 20px 40px; }
+  .landing-frame { border-radius: 8px; }
+  .landing-cta { min-width: 200px; }
 }
 
 @media (max-width: 768px) {
+  .landing-hero { padding: 14px 20px; }
   .landing-cta {
-    width: 62vw;
-    min-width: 200px;
-    height: 6vh;
-    font-size: clamp(14px, 4vw, 20px);
-    gap: 1.2vw;
-  }
-  .landing-hero-img {
-    /* 모바일 세로 화면: 16:9 이미지를 폭 기준으로 맞춰 상단 중앙 정렬(세로 가운데) */
-    object-fit: contain;
-  }
-  .landing-hero {
-    background: #fbfaf6;
+    width: 40%;
+    min-width: 190px;
+    height: 6.5%;
+    font-size: clamp(14px, 3.6vw, 20px);
+    gap: 1.5%;
   }
 }
 
 @media (max-width: 480px) {
+  .landing-hero { padding: 10px 12px; }
+  .landing-frame { border-radius: 6px; }
   .landing-cta {
-    width: 72vw;
-    font-size: 4.5vw;
+    width: 68%;
+    min-width: 170px;
+    font-size: 4.2vw;
   }
 }
