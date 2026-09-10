@@ -26,7 +26,7 @@
   position: relative;
   width: 100%;
   max-width: 1320px;
-  aspect-ratio: 1672 / 941; /* 레퍼런스 원본 비율 */
+  aspect-ratio: 1440 / 679; /* hero.png 원본 비율 */
   max-height: calc(100vh - 56px);
   max-height: calc(100svh - 56px);
   background: #ffffff;
@@ -47,12 +47,12 @@
 }
 
 /* ---------- CTA 버튼 오버레이 ----------
-   레퍼런스 측정 (1672×941): x 657–1008 중앙, y 708–760 (top 75.2%),
-   pill, #F0655A, 흰 텍스트. 프레임 크기에 %로 함께 이동 */
+   hero.png (1440×679) 측정: 설명문 하단 81.9% 아래 빈 영역에 배치.
+   중앙, top 82.5%, 폭 21% — 캐릭터(x 56%↑)와 겹치지 않음 */
 .landing-cta {
   position: absolute;
   left: 50%;
-  top: 75.2%;
+  top: 82.5%;
   transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
