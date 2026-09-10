@@ -421,7 +421,7 @@ export default function App() {
     <div className="min-h-screen bg-[#eefbf7] font-sans">
       {/* Header — 제목 클릭 시 랜딩페이지로 이동 */}
       <header className="bg-white/90 backdrop-blur border-b border-teal-100 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 h-16 flex items-center justify-between gap-4">
+        <div className="w-full px-3 lg:px-5 h-16 flex items-center justify-between gap-4">
           <a href="/teachers-meeting/" className="flex items-center gap-3 min-w-0 group" title="랜딩페이지로 이동">
             <span className="w-10 h-10 rounded-2xl bg-teal-500 flex items-center justify-center shadow-sm group-hover:bg-teal-600 transition-colors">
               <NotebookPen className="w-5.5 h-5.5 text-white" />
@@ -445,7 +445,7 @@ export default function App() {
         </div>
 
         {/* 진행 단계 표시 */}
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pb-3 -mt-1 hidden md:block">
+        <div className="w-full px-3 lg:px-5 pb-3 -mt-1 hidden md:block">
           <div className="flex items-center gap-2 text-[13px] font-medium">
             {STEPS.map((step, i) => (
               <React.Fragment key={step}>
@@ -467,9 +467,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-[1440px] mx-auto px-4 lg:px-10 py-6 lg:py-10 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+      <main className="w-full px-2 lg:px-4 py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[30fr_70fr] gap-6 lg:gap-6 items-start">
         {/* Left: 입력 카드 */}
-        <div className="bg-white rounded-3xl border border-teal-100/80 shadow-[0_4px_24px_rgba(13,148,136,0.08)] p-6 lg:p-8 space-y-7">
+        <div className="bg-white rounded-3xl border border-teal-100/80 shadow-[0_4px_24px_rgba(13,148,136,0.08)] p-5 lg:p-6 space-y-7 min-w-0">
           {/* ① 회의자료 입력 */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
@@ -690,7 +690,7 @@ export default function App() {
         </div>
 
         {/* Right: A4 미리보기 카드 */}
-        <div className="bg-white rounded-3xl border border-teal-100/80 shadow-[0_4px_24px_rgba(13,148,136,0.08)] p-6 lg:p-8 space-y-6 lg:sticky lg:top-28">
+        <div className="bg-white rounded-3xl border border-teal-100/80 shadow-[0_4px_24px_rgba(13,148,136,0.08)] p-6 lg:p-8 space-y-6 lg:sticky lg:top-28 min-w-0">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="w-7 h-7 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
