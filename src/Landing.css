@@ -19,8 +19,6 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1440 / 683;
-  min-height: 100vh;
-  min-height: 100svh;
   overflow: hidden;
 }
 
@@ -44,7 +42,7 @@
 .landing-cta {
   position: absolute;
   left: 50%;
-  top: 89%;
+  top: 70%;
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
