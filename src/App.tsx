@@ -343,6 +343,29 @@ export default function App() {
 
   const hasResult = Object.values(sections).some(v => v.trim() !== '');
 
+  // A4 페이지 분할 — 첫 장은 제목+기본정보로 좁고, 이후 장은 본문 전용.
+  // 항목(행) 단위로만 넘기므로 발언 블록이 중간에 잘리지 않는다.
+  // 한 장당 들어갈 수 있는 본문 글자량(경험적 추정): 1페이지 1400자, 2페이지부터 2400자
+  const pages: { key: keyof Sections; label: string; hint: string }[][] = (() => {
+    const visible = processing ? [] : SECTION_LABELS.slice();
+    const chunks: typeof pages = [];
+    let current: typeof visible = [];
+    let used = 0;
+    const capacity = () => (chunks.length === 0 ? 1400 : 2400);
+    for (const item of visible) {
+      const len = stripMarkdown(sections[item.key] || '').length + 60;
+      if (used > 0 && used + len > capacity()) {
+        chunks.push(current);
+        current = [];
+        used = 0;
+      }
+      current.push(item);
+      used += len;
+    }
+    if (current.length > 0 || chunks.length === 0) chunks.push(current);
+    return chunks;
+  })();
+
   const downloadWord = async () => {
     const formatDateTime = (value: string) => value.replace('T', ' ');
     const toLines = (text: string) =>
@@ -689,9 +712,9 @@ export default function App() {
           </section>
         </div>
 
-        {/* Right: A4 미리보기 카드 */}
-        <div className="bg-white rounded-3xl border border-teal-100/80 shadow-[0_4px_24px_rgba(13,148,136,0.08)] p-6 lg:p-8 space-y-6 lg:sticky lg:top-28 min-w-0">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* Right: A4 미리보기 작업 공간 (연한 회색 캔버스) */}
+        <div className="a4-workspace min-w-0">
+          <div className="flex items-center justify-between gap-3 flex-wrap px-1 pb-3">
             <div className="flex items-center gap-2">
               <span className="w-7 h-7 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
                 <FileText className="w-4 h-4" />
@@ -699,102 +722,104 @@ export default function App() {
               <h2 className="font-bold text-teal-900">회의록 미리보기</h2>
             </div>
             {hasResult && (
-              <span className="px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-blue-600 text-[13px] font-medium flex items-center gap-1.5">
+              <span className="px-3 py-1 bg-white border border-blue-100 rounded-full text-blue-600 text-[13px] font-medium flex items-center gap-1.5 shadow-sm">
                 <CheckCircle2 className="w-4 h-4" />
                 생성 완료 · 수정 가능
               </span>
             )}
           </div>
 
-          {/* A4 종이 */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-inner p-6 lg:p-10">
-            <h3 className="text-center text-2xl lg:text-3xl font-bold tracking-widest underline underline-offset-[12px] decoration-teal-300/60">
-              {meetingData.title || '교사회의록'}
-            </h3>
+          {/* A4 문서들 (길면 여러 장) — 작업 공간 중앙에 배치 */}
+          <div className="a4-pages">
+            {pages.map((pageRows, pageIdx) => (
+              <div key={pageIdx} className="a4-sheet">
+                {/* 1페이지에만 제목 표시 */}
+                {pageIdx === 0 && (
+                  <h3 className="a4-doc-title">{meetingData.title || '교사회의록'}</h3>
+                )}
 
-            <div className="w-full border-t border-l border-slate-400 text-sm lg:text-base overflow-x-auto mt-8">
-              <div className="min-w-[520px]">
-                {/* 기본정보: 일시 / 장소 */}
-                <div className="flex">
-                  <div className="w-1/6 p-3 border-r border-b border-slate-400 bg-teal-50/70 font-bold flex items-center justify-center text-center">일 시</div>
-                  <div className="w-2/6 p-3 border-r border-b border-slate-400 flex items-center justify-center text-center">{meetingData.date.replace('T', ' ')}</div>
-                  <div className="w-1/6 p-3 border-r border-b border-slate-400 bg-teal-50/70 font-bold flex items-center justify-center text-center">장 소</div>
-                  <div className="w-2/6 p-3 border-r border-b border-slate-400 flex items-center justify-center text-center">{meetingData.location}</div>
-                </div>
-                {/* 기본정보: 참석자 */}
-                <div className="flex">
-                  <div className="w-1/6 p-3 border-r border-b border-slate-400 bg-teal-50/70 font-bold flex items-center justify-center text-center">참석자</div>
-                  <div className="w-5/6 p-3 border-r border-b border-slate-400 flex items-center justify-center text-center">{meetingData.attendees}</div>
-                </div>
+                <div className="a4-table">
+                  {pageIdx === 0 && (
+                    <>
+                      {/* 기본정보: 일시 / 장소 */}
+                      <div className="flex">
+                        <div className="a4-cell-label">일 시</div>
+                        <div className="a4-cell-value w-2/6">{meetingData.date.replace('T', ' ')}</div>
+                        <div className="a4-cell-label">장 소</div>
+                        <div className="a4-cell-value w-2/6">{meetingData.location}</div>
+                      </div>
+                      {/* 기본정보: 참석자 */}
+                      <div className="flex">
+                        <div className="a4-cell-label">참석자</div>
+                        <div className="a4-cell-value w-5/6">{meetingData.attendees}</div>
+                      </div>
+                    </>
+                  )}
 
-                {/* 본문 5개 항목 */}
-                {processing ? (
-                  <div className="border-r border-b border-slate-400 min-h-[400px] flex flex-col items-center justify-center gap-6 text-slate-400">
-                    <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-                    <p className="text-base font-medium">AI가 회의 내용을 분석하고 있습니다...</p>
-                  </div>
-                ) : (
-                  SECTION_LABELS.map(({ key, label, hint }) => (
-                    <div key={key} className="flex group relative">
-                      <div className="w-1/6 p-3 border-r border-b border-slate-400 bg-teal-50/70 font-bold flex items-center justify-center text-center leading-snug">{label}</div>
-                      <div className="w-5/6 p-4 border-r border-b border-slate-400 min-h-[72px] flex items-start text-left whitespace-pre-wrap leading-relaxed">
-                        {editingSection === key ? (
-                          <div className="w-full space-y-3">
-                            <textarea
-                              value={editDraft}
-                              onChange={e => setEditDraft(e.target.value)}
-                              rows={8}
-                              autoFocus
-                              className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-base focus:ring-2 focus:ring-teal-400 outline-none leading-relaxed resize-y"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => setEditingSection(null)}
-                                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-50"
-                              >
-                                취소
-                              </button>
-                              <button onClick={saveEdit} className="px-4 py-2 rounded-xl bg-teal-500 text-white text-sm font-bold hover:bg-teal-600">
-                                저장
-                              </button>
+                  {processing ? (
+                    <div className="a4-cell-body min-h-[400px] flex flex-col items-center justify-center gap-6 text-slate-400">
+                      <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+                      <p className="text-base font-medium">AI가 회의 내용을 분석하고 있습니다...</p>
+                    </div>
+                  ) : (
+                    pageRows.map(({ key, label, hint }) => (
+                      <div key={key} className="flex group relative">
+                        <div className="a4-cell-label w-1/6 leading-snug">{label}</div>
+                        <div className="a4-cell-body w-5/6">
+                          {editingSection === key ? (
+                            <div className="w-full space-y-3">
+                              <textarea
+                                value={editDraft}
+                                onChange={e => setEditDraft(e.target.value)}
+                                rows={8}
+                                autoFocus
+                                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-base focus:ring-2 focus:ring-teal-400 outline-none leading-relaxed resize-y"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => setEditingSection(null)}
+                                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-50"
+                                >
+                                  취소
+                                </button>
+                                <button onClick={saveEdit} className="px-4 py-2 rounded-xl bg-teal-500 text-white text-sm font-bold hover:bg-teal-600">
+                                  저장
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ) : sections[key] ? (
-                          stripMarkdown(sections[key])
-                        ) : (
-                          <span className="text-slate-300">{hasResult ? '내용 없음 — 직접 입력할 수 있습니다.' : hint}</span>
+                          ) : sections[key] ? (
+                            stripMarkdown(sections[key])
+                          ) : (
+                            <span className="text-slate-300">{hasResult ? '내용 없음 — 직접 입력할 수 있습니다.' : hint}</span>
+                          )}
+                        </div>
+                        {editingSection !== key && (
+                          <button
+                            onClick={() => startEdit(key)}
+                            title={`${label} 수정`}
+                            className="absolute right-3 top-3 p-2 rounded-full bg-slate-100 text-slate-400 hover:bg-teal-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
-                      {editingSection !== key && (
-                        <button
-                          onClick={() => startEdit(key)}
-                          title={`${label} 수정`}
-                          className="absolute right-3 top-3 p-2 rounded-full bg-slate-100 text-slate-400 hover:bg-teal-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all shadow-sm"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))
+                    ))
+                  )}
+                </div>
+
+                {!hasResult && !processing && pageIdx === 0 && (
+                  <p className="text-center text-sm text-slate-400 leading-relaxed mt-8">
+                    회의 메모를 입력하고 <span className="font-bold text-teal-600">AI로 회의록 작성하기</span> 버튼을 누르면
+                    <br />
+                    5개 항목으로 구성된 교사회의록이 자동 작성됩니다.
+                  </p>
+                )}
+
+                {pages.length > 1 && (
+                  <div className="a4-page-number">{pageIdx + 1} / {pages.length} 페이지</div>
                 )}
               </div>
-            </div>
-
-            {!hasResult && !processing && (
-              <p className="text-center text-sm text-slate-400 leading-relaxed mt-8">
-                회의 메모를 입력하고 <span className="font-bold text-teal-600">AI로 회의록 작성하기</span> 버튼을 누르면
-                <br />
-                5개 항목으로 구성된 교사회의록이 자동 작성됩니다.
-              </p>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 flex justify-between items-end">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400 uppercase tracking-widest">Generated by</span>
-              <span className="font-bold text-base text-teal-800">교사회의록 작성도우미 AI</span>
-            </div>
-            <CheckCircle2 className="w-10 h-10 text-teal-200" />
+            ))}
           </div>
         </div>
       </main>
