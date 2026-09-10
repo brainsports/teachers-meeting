@@ -58,6 +58,66 @@ function asText(value: unknown): string {
   return "";
 }
 
+// ---------- 생성 결과 검증 (discussion 품질 체크) ----------
+// 1) 입력된 참석자 이름이 모두 등장하는지
+// 2) 발언자 이름 뒤에 실제 발언 내용이 있는지 ("이름:" 다음에 비어있지 않은 줄)
+// 3) 금지 표현(~함, ~됨 등 보고서식 종결)이 있는지
+function validateDiscussion(discussion: string, attendeeNames: string[]): string[] {
+  const problems: string[] = [];
+
+  // (1) 참석자 누락 검사
+  for (const name of attendeeNames) {
+    if (!discussion.includes(name)) {
+      problems.push(`참석자 누락: ${name}`);
+    }
+  }
+
+  // (2) 발언 형식 검사 — "이름:" 바로 다음에 오는 내용이 있어야 함
+  const lines = discussion.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const speakerMatch = line.match(/^(.{1,20})[::]?\s*$/);
+    if (speakerMatch && attendeeNames.includes(speakerMatch[1])) {
+      // 이름 줄 발견 — 다음 비어있지 않은 줄에 발언이 있는지 확인
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim()) j++;
+      if (j >= lines.length || lines[j].trim().length < 10) {
+        problems.push(`발언 내용 없음: ${speakerMatch[1]}`);
+      }
+    }
+  }
+
+  // (3) 금지 종결 표현 검사 (~함 / ~됨 / ~하였음 / ~필요함 / ~판단됨)
+  const bannedEndings = discussion.match(/[가-힣]{2,}(함|됨)\s*$/gm);
+  if (bannedEndings && bannedEndings.length > 0) {
+    problems.push(`금지 종결어미 사용: ${bannedEndings.slice(0, 3).join(", ")}`);
+  }
+
+  return problems;
+}
+
+// 검증 실패 시 1회 보정 재생성 프롬프트
+function buildRevisionPrompt(originalPrompt: string, discussion: string, problems: string[], attendeeNames: string[]): string {
+  return `
+      아래 교사회의록 초안에서 발견된 문제를 고쳐 다시 작성해 주세요.
+
+      [발견된 문제]
+      ${problems.map(p => `- ${p}`).join("\n      ")}
+
+      [수정 지침]
+      1. 참석자 "${attendeeNames.join('", "')}" 전원이 각 안건의 참석자별 의견에 빠짐없이 등장해야 합니다.
+      2. 반드시 "발언자 이름:" 줄 다음에 발언 내용을 작성합니다. 발언자 이름이 없는 문단은 만들지 않습니다.
+      3. 모든 문장은 존칭 종결어미(~습니다, ~좋겠습니다, ~필요합니다 등)로 끝냅니다. "~함", "~됨" 금지.
+      4. 참석자 1명당 약 300자 내외, 서로 다른 관점으로 작성합니다.
+      5. 원본 회의 정보의 사실만 사용하고, 없는 사실은 만들지 않습니다.
+
+      [초안의 discussion]
+      ${discussion.slice(0, 4000)}
+
+      ${originalPrompt}
+    `;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
@@ -108,6 +168,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const modelName = "gemini-3.6-flash";
+
+    // 참석자 이름 SSOT — attendees 입력값을 그대로 파싱 (AI가 다른 이름을 만들지 못하게 프롬프트에 고정)
+    const attendeeNames: string[] = ((meetingData?.attendees as string) || "")
+      .split(/[,/\n·]/)
+      .map((s: string) => s.trim().replace(/\s*\(.*?\)\s*/g, "").trim())
+      .filter((s: string) => s.length > 0 && s.length <= 20);
+
     const promptText = `
       당신은 지역아동센터(방과후아동돌봄시설)의 '교사회의록' 작성 전문가입니다.
       아래 회의 정보${file ? "와 업로드된 회의 자료" : ""}를 분석하여, 희망이음 시스템에 옮겨 입력하기 좋은 교사회의록을 작성해 주세요.
@@ -119,6 +186,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       - 장소: ${meetingData?.location || "미입력"}
       - 참석자: ${meetingData?.attendees || "미입력"}
       - 회의 메모 / 안건: ${meetingData?.memo || "미입력"}
+
+      [발언자 이름 목록 — 반드시 이 이름만 사용]
+      ${attendeeNames.length > 0 ? attendeeNames.map((n: string, i: number) => `${i + 1}. ${n}`).join("\n      ") : "미입력"}
+      위 이름 외의 다른 이름(성함)을 절대 만들어내지 마세요. 이름을 변형하지도 마세요.
 
       [작성할 5개 항목]
       1. report (보고 및 전달사항): 공지사항, 행정업무, 일정, 아동 관련 전달사항, 교육, 안전 관련 내용을 정리.
@@ -136,13 +207,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (5) 준비할 사항
       (6) 최종 결론
 
-      참석자별 의견 작성법:
-      - 실제 입력된 참석자 이름을 사용하고, 참석자 수만큼 빠짐없이 작성합니다.
+      참석자별 의견 작성법 — 가장 중요한 규칙:
+      - 반드시 "발언자 이름 + 발언 내용" 형식으로 작성합니다. 이름을 먼저 적고, 그 다음 줄에 발언 내용을 적습니다.
+      - [발언자 이름 목록]에 있는 참석자 전원이 빠짐없이 각 안건마다 등장해야 합니다. (4명이면 4명 모두)
+      - 발언자 이름이 없는 의견 문단은 절대 만들지 않습니다.
       - 1명당 약 300자 내외로 작성합니다.
       - 각 의견에는 이유, 걱정되는 점, 준비할 점, 찬성 이유 등이 자연스럽게 포함합니다.
-      - 참석자마다 표현과 관점을 조금씩 다르게 하여 서로 똑같지 않게 합니다.
-      - 형식은 "이름:\\n의견 내용" (예: 김센터장:\\n가을야유회를 진행하는 것은 아동들에게 좋은 추억이 될 수 있어 찬성합니다. ...)
-      - 단, 원문에 참석자의 실제 발언이나 입장이 있다면 그 내용을 가장 우선하고, 없는 부분만 안건 주제에 맞는 일반적인 교사의견으로 자연스럽게 작성합니다. 원문에 없는 새로운 사실(날짜, 장소, 예산, 특정 아동 정보)은 만들지 않습니다.
+      - 참석자마다 표현과 관점을 조금씩 다르게 하여, 같은 문장을 이름만 바꿔 반복하지 않습니다.
+      - 형식 예시:
+        김센터장:
+        가을야유회는 아이들에게 좋은 경험이 될 수 있어서 진행하는 것이 좋겠습니다. 다만 이동할 때 인원 확인과 안전관리를 철저히 해야 합니다.
+      - 원문에 참석자의 실제 발언이나 입장이 있다면 그 내용을 가장 우선하고, 없는 부분만 안건 주제에 맞는 일반적인 교사의견으로 자연스럽게 작성합니다.
+      - 원문에 없는 새로운 사실(날짜, 장소, 예산, 특정 아동 정보)은 만들지 않습니다.
 
       최종 결론 작성법:
       - 참석자들이 대체로 찬성한 분위기면 최종 결론도 찬성으로 정리합니다.
@@ -151,11 +227,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       - 원문에 실제 합의 내용이 있으면 그 내용을 가장 우선합니다.
 
       [문체 지침 — 모든 항목 공통]
-      - 모든 문장은 존칭형(~습니다, ~했습니다, ~하기로 했습니다, ~필요합니다, ~좋겠습니다, ~생각합니다)으로 작성합니다.
-      - "~함", "~됨", "~하였음", "~필요함", "~판단됨" 같은 보고서식 표현은 사용하지 않습니다.
+      - 모든 문장은 반드시 존칭 종결어미(~습니다, ~했습니다, ~하기로 했습니다, ~필요합니다, ~좋겠습니다, ~생각합니다)로 끝냅니다.
+      - "~함", "~됨", "~하였음", "~필요함", "~판단됨" 같은 보고서식 표현은 절대 사용하지 않습니다.
       - 초등학교 6학년이 읽어도 이해할 수 있는 쉬운 말로, 짧고 자연스러운 문장으로 작성합니다.
       - 실제 교사들이 회의에서 말할 법한 표현을 사용합니다.
-      - 다음 AI 느낌 나는 표현은 금지합니다: "종합적으로 살펴보면", "다각적인 관점에서", "긍정적인 시너지를 기대할 수 있습니다", "체계적이고 효율적인 운영이 필요합니다", "향후 지속적인 발전이 기대됩니다", "전반적으로 긍정적인 효과가 예상됩니다"
+      - 다음 AI 느낌 나는 표현은 금지합니다: "종합적으로 살펴보면", "다각적인 관점에서", "긍정적인 시너지", "체계적이고 효율적인 운영", "향후 지속적인 발전", "전반적으로 긍정적인 효과"
       - 대신 "아이들이 좋아할 것 같아서 진행하는 것이 좋겠습니다.", "안전문제만 잘 준비하면 큰 어려움은 없을 것 같습니다." 같은 자연스러운 말로 작성합니다.
 
       [작성 원칙 — 반드시 지킬 것]
@@ -195,11 +271,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const rawText = response.text || "";
-    const parsed = extractJsonBlock(rawText);
+    let parsed = extractJsonBlock(rawText);
 
     if (!parsed) {
       console.error("[ERROR] Failed to parse Gemini JSON response.");
       return res.status(502).json({ error: "PARSE_FAILED", message: "회의록 생성 결과를 해석하지 못했습니다. 다시 생성해 주세요." });
+    }
+
+    // 생성 결과 검증 — 참석자 누락/발언형식/금지 표현 확인 후 1회 보정
+    if (attendeeNames.length > 0) {
+      const problems = validateDiscussion(asText(parsed.discussion), attendeeNames);
+      if (problems.length > 0) {
+        console.log("[WARN] Discussion validation failed, retrying once:", problems.join(" / "));
+        try {
+          const revisionResponse = await ai.models.generateContent({
+            model: modelName,
+            contents: { parts: [{ text: buildRevisionPrompt(promptText, asText(parsed.discussion), problems, attendeeNames) }] },
+          });
+          const revisedParsed = extractJsonBlock(revisionResponse.text || "");
+          if (revisedParsed && asText(revisedParsed.discussion)) {
+            parsed = revisedParsed;
+          }
+        } catch (revError: any) {
+          // 보정 실패 시 1차 결과로 진행 (전체 실패로 돌리지 않음)
+          console.error("[WARN] Revision attempt failed:", revError?.message || revError);
+        }
+      }
     }
 
     const sections: SectionResult = {
