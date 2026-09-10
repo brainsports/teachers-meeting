@@ -1,7 +1,7 @@
 /* ============================================================
    랜딩페이지 — hero.png 원본을 화면 끝까지 채우는 구조.
    바깥 여백 없음 / max-width 없음 / border-radius 없음.
-   이미지 속 노란 '작성하기' 버튼 위에 투명 클릭 영역만 오버레이.
+   설명문 아래 중앙에 실제 HTML 버튼 표시.
    ============================================================ */
 
 .landing-hero {
@@ -28,23 +28,69 @@
   -webkit-user-drag: none;
 }
 
-/* ---------- 투명 클릭 영역 ----------
-   hero.png (1440×679)에서 측정한 노란 pill 버튼 위치:
-   x 39.0–62.3% (중앙), y 79.4–98.2% — 이미지 크기에 %로 함께 이동 */
-.landing-cta-zone {
+/* ---------- 실제 CTA 버튼 ----------
+   hero.png (1440×683): 설명문 하단 81.4% 아래,
+   기존 버튼이 있던 중앙 자리(top 84%)에 배치.
+   pill, 코랄 배경, 흰색 굵은 글씨 */
+.landing-cta {
   position: absolute;
-  left: 39%;
-  top: 79.4%;
-  width: 23.3%;
-  height: 18.8%;
-  background: transparent;
-  border: none;
+  left: 50%;
+  top: 84%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: clamp(260px, 20vw, 300px);
+  height: 62px;
+  max-height: 9vh;
   border-radius: 9999px;
+  background: #f0655a;
+  color: #ffffff;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-weight: 800;
+  font-size: clamp(17px, 1.5vw, 22px);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(240, 101, 90, 0.28);
+  transition: background 0.15s ease, transform 0.15s ease;
   cursor: pointer;
   z-index: 10;
   -webkit-tap-highlight-color: transparent;
 }
-.landing-cta-zone:focus-visible {
+.landing-cta:hover {
+  background: #e5544a;
+  transform: translateX(-50%) translateY(-2px);
+}
+.landing-cta:active {
+  transform: translateX(-50%) translateY(0);
+}
+.landing-cta:focus-visible {
   outline: 3px solid rgba(240, 101, 90, 0.55);
   outline-offset: 2px;
+}
+.landing-cta-arrow {
+  width: 1.05em;
+  height: 1.05em;
+  flex-shrink: 0;
+}
+
+/* ---------- 반응형: 이미지 비율에 따라 버튼 위치 유지 ---------- */
+@media (max-width: 768px) {
+  .landing-cta {
+    width: 68vw;
+    max-width: 300px;
+    height: 58px;
+    font-size: 17px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-cta {
+    width: 74vw;
+    font-size: 16px;
+    height: 54px;
+  }
 }
